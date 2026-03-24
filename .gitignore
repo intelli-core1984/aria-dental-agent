@@ -8,3 +8,5 @@ __pycache__/
 *.pyo
 .DS_Store
 data/screenshots/
+server/.env
+server/aria.db

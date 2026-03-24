@@ -49,15 +49,15 @@ class SetupDialog(ctk.CTk):
 
         ctk.CTkLabel(
             self,
-            text="Enter your Anthropic API key to get started.\n"
-                 "Get one free at console.anthropic.com",
+            text="Enter your ARIA license key to get started.\n"
+                 "Contact support@intelli-network.com if you need one.",
             font=ctk.CTkFont(size=10), text_color=MUTED,
             justify="center"
         ).pack(pady=(0, 16))
 
-        # API key entry
+        # License key entry
         self.key_entry = ctk.CTkEntry(
-            self, placeholder_text="sk-ant-...",
+            self, placeholder_text="aria_live_...",
             fg_color="#1d2733", border_color="#263545",
             text_color=TEXT, placeholder_text_color=MUTED,
             font=ctk.CTkFont(family="Courier", size=11),
@@ -94,11 +94,11 @@ class SetupDialog(ctk.CTk):
 
     def _save(self):
         key = self.key_entry.get().strip()
-        if not key.startswith("sk-ant-"):
-            self.status_lbl.configure(text="⚠  Key should start with sk-ant-")
+        if not key.startswith("aria_"):
+            self.status_lbl.configure(text="⚠  Key should start with aria_live_ or aria_test_")
             return
         config_path = get_config_path()
-        config_path.write_text(f"ANTHROPIC_API_KEY={key}\n")
+        config_path.write_text(f"ARIA_LICENSE_KEY={key}\n")
         self.result = key
         self.destroy()
 
@@ -109,12 +109,12 @@ class SetupDialog(ctk.CTk):
 
 
 def run_setup_if_needed() -> bool:
-    """Show setup dialog if no API key is configured. Returns True if ready."""
+    """Show setup dialog if no license key is configured. Returns True if ready."""
     from dotenv import dotenv_values
     config_path = get_config_path()
     if config_path.exists():
         vals = dotenv_values(config_path)
-        if vals.get("ANTHROPIC_API_KEY", "").startswith("sk-ant-"):
+        if vals.get("ARIA_LICENSE_KEY", "").startswith("aria_"):
             return True
     dialog = SetupDialog()
     return dialog.run()
