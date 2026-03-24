@@ -1,0 +1,10 @@
+.env
+data/
+dist/
+build/
+*.spec
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+data/screenshots/
