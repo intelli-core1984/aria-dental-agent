@@ -10,9 +10,17 @@ import sys
 import time
 from PIL import Image
 from pathlib import Path
+from paths import get_resource_dir, get_data_dir
 
-SCREENSHOT_DIR = Path(__file__).parent / "data" / "screenshots"
+SCREENSHOT_DIR = get_data_dir() / "screenshots"
 SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
+
+# Point pytesseract at the bundled binary when frozen
+if getattr(sys, 'frozen', False):
+    import os
+    _tess = get_resource_dir() / "tesseract" / "tesseract.exe"
+    if _tess.exists():
+        pytesseract.pytesseract.tesseract_cmd = str(_tess)
 
 # Dentrix window title fragments to look for
 DENTRIX_TITLES = ["Dentrix", "DENTRIX", "Office Manager", "Appointment Book"]

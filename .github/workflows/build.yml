@@ -1,0 +1,90 @@
+name: Build ARIA Windows Installer
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Tesseract OCR
+        run: choco install tesseract --no-progress -y
+        shell: cmd
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt pyinstaller
+
+      - name: Generate icon
+        run: python assets/create_icon.py
+
+      - name: Bundle Tesseract into dist
+        shell: pwsh
+        run: |
+          $tess = "C:\Program Files\Tesseract-OCR"
+          New-Item -ItemType Directory -Force -Path "tesseract_bundle\tesseract"
+          Copy-Item "$tess\tesseract.exe" "tesseract_bundle\tesseract\"
+          Copy-Item "$tess\tessdata" "tesseract_bundle\tesseract\tessdata" -Recurse
+          # Copy required DLLs
+          Get-ChildItem "$tess" -Filter "*.dll" | Copy-Item -Destination "tesseract_bundle\tesseract\"
+
+      - name: Build with PyInstaller
+        run: |
+          pyinstaller `
+            --onefile `
+            --noconsole `
+            --name "ARIA" `
+            --icon "assets/aria.ico" `
+            --add-data "skills;skills" `
+            --add-data "tesseract_bundle/tesseract;tesseract" `
+            --hidden-import "pystray._win32" `
+            --hidden-import "PIL._tkinter_finder" `
+            --hidden-import "customtkinter" `
+            main.py
+        shell: pwsh
+
+      - name: Smoke test (import check)
+        run: python -c "import agent, storage, paths, setup_dialog; print('OK')"
+
+      # ── Upload artifact for every push ──────────────────────────
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ARIA-windows
+          path: dist/ARIA.exe
+          retention-days: 30
+
+      # ── Create a GitHub Release only on version tags ─────────────
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "ARIA ${{ github.ref_name }}"
+          body: |
+            ## ARIA Dental Agent ${{ github.ref_name }}
+
+            ### Install on any Windows PC — one file, no setup required
+
+            1. Download **ARIA.exe** below
+            2. Double-click to run
+            3. Enter your Anthropic API key when prompted (first time only)
+            4. ARIA appears in your system tray — press **Ctrl+Shift+A** to open the chat
+
+            > Get an API key at https://console.anthropic.com
+          files: dist/ARIA.exe
+          draft: false
+          prerelease: false

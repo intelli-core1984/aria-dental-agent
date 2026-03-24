@@ -9,11 +9,11 @@ from pathlib import Path
 from anthropic import Anthropic
 from dotenv import load_dotenv
 from storage import Storage
+from paths import get_resource_dir, get_config_path
 
-load_dotenv()
+load_dotenv(get_config_path())
 
-SKILLS_DIR = Path(__file__).parent / "skills"
-DATA_DIR   = Path(__file__).parent / "data"
+SKILLS_DIR = get_resource_dir() / "skills"
 
 
 class Agent:

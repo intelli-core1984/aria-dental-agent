@@ -7,9 +7,10 @@ No database needed — just flat files.
 import json
 import time
 from pathlib import Path
+from paths import get_data_dir
 
-DATA_DIR = Path(__file__).parent / "data"
-DATA_DIR.mkdir(exist_ok=True)
+DATA_DIR = get_data_dir() / "captures"
+DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 
 class Storage:

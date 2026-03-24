@@ -10,6 +10,8 @@ from pynput import keyboard
 import sys
 import os
 
+from paths import get_config_path
+from setup_dialog import run_setup_if_needed
 from popup import PopupWindow
 from scheduler import BackgroundScheduler
 
@@ -59,6 +61,14 @@ def start_hotkey_listener():
 
 # ── Main ─────────────────────────────────────────────────────────
 def main():
+    # First-run setup: show API key dialog if not configured
+    if not run_setup_if_needed():
+        sys.exit(0)
+
+    # Load config from persistent location
+    from dotenv import load_dotenv
+    load_dotenv(get_config_path())
+
     # Start background scheduler
     bg = BackgroundScheduler()
     bg.start()
