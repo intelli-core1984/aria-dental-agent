@@ -1,7 +1,7 @@
 """
 ARIA — Agent layer
-Routes requests through the ARIA proxy server using a license key.
-Your Anthropic key never lives on the customer's machine.
+Routes all requests through the ARIA proxy server using a license key.
+The Anthropic API key never lives on the customer's machine.
 """
 
 import os
@@ -14,9 +14,9 @@ from paths import get_resource_dir, get_config_path
 
 load_dotenv(get_config_path())
 
-SKILLS_DIR   = get_resource_dir() / "skills"
-SERVER_URL   = os.getenv("ARIA_SERVER_URL", "https://aria-proxy.railway.app")
-LICENSE_KEY  = os.getenv("ARIA_LICENSE_KEY", "")
+SKILLS_DIR  = get_resource_dir() / "skills"
+SERVER_URL  = os.getenv("ARIA_SERVER_URL", "https://aria-proxy.railway.app")
+LICENSE_KEY = os.getenv("ARIA_LICENSE_KEY", "")
 
 
 class Agent:
@@ -40,9 +40,9 @@ class Agent:
 
     # ── System prompt ────────────────────────────────────────────
     def _build_system_prompt(self) -> str:
-        latest      = self.storage.get_latest()
+        latest       = self.storage.get_latest()
         data_context = json.dumps(latest, indent=2) if latest else "No data captured yet."
-        skill_001   = self.skills.get("schedule-intelligence-reader", "")
+        skill_001    = self.skills.get("schedule-intelligence-reader", "")
 
         return f"""You are ARIA, the AI office assistant for Image Dental in Calgary.
 You run on the front desk computer and help staff answer questions about
@@ -81,19 +81,30 @@ LATEST CAPTURED DATA:
                 timeout=30,
             )
 
-            if resp.status_code == 401:
-                return "Invalid license key. Contact support@intelli-network.com"
-            if resp.status_code == 403:
-                return "Your license is inactive. Contact support@intelli-network.com"
-            if resp.status_code == 429:
-                return "Monthly request limit reached. Contact support to upgrade your plan."
+            # Pass server error messages through verbatim — they are user-friendly
+            if resp.status_code in (401, 403, 429):
+                try:
+                    detail = resp.json().get("detail", "")
+                except Exception:
+                    detail = ""
+                return detail or "Access denied. Contact support@intelli-network.com"
+
             resp.raise_for_status()
 
-            answer = resp.json()["answer"]
-            self.history.append({"role": "assistant", "content": answer})
+            data   = resp.json()
+            answer = data.get("answer", "")
+            status = data.get("status")
+            trial  = data.get("trial_remaining")
 
+            self.history.append({"role": "assistant", "content": answer})
             if len(self.history) > 20:
                 self.history = self.history[-20:]
+
+            # Append trial notice when account is pending approval
+            if status == "pending" and trial is not None:
+                plural = "s" if trial != 1 else ""
+                answer += (f"\n\n[Trial: {trial} message{plural} remaining — "
+                           "pending admin approval]")
 
             return answer
 
@@ -102,6 +113,6 @@ LATEST CAPTURED DATA:
         except Exception as e:
             return f"Error: {str(e)}"
 
-    # ── Clear history ────────────────────────────────────────────
+    # ── Reset ────────────────────────────────────────────────────
     def reset(self):
         self.history = []

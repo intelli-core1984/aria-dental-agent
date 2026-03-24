@@ -2,10 +2,13 @@
 ARIA — Web interface (browser preview / testing)
 Flask server that serves the chat UI and proxies to the Claude agent.
 """
+import sys
+import json as _json
 from flask import Flask, request, jsonify, render_template_string
 from paths import get_config_path
 from dotenv import load_dotenv
 import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "server"))
 
 load_dotenv(get_config_path())
 
@@ -271,6 +274,39 @@ def ask():
         return jsonify({"answer": answer})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/admin/dashboard")
+def admin_dashboard():
+    from dashboard import DASHBOARD_HTML
+    from db import Database
+    admin_key = request.args.get("key", "")
+    expected  = os.getenv("ADMIN_KEY", "")
+    if not admin_key or admin_key != expected:
+        return "<pre style='color:#e05050;background:#0f1419;padding:20px'>403 — Invalid admin key.\nAdd ?key=YOUR_ADMIN_KEY to the URL.</pre>", 403
+    db   = Database()
+    rows = db.get_all_registrations()
+    html = DASHBOARD_HTML.replace("__REGISTRATIONS_JSON__", _json.dumps(rows))
+    return html
+
+
+@app.route("/admin/registrations/<action>", methods=["POST"])
+def admin_action(action):
+    if action not in ("approve", "reject"):
+        return jsonify({"detail": "Unknown action"}), 400
+    admin_key = request.headers.get("x-admin-key", "")
+    if admin_key != os.getenv("ADMIN_KEY", ""):
+        return jsonify({"detail": "Invalid admin key"}), 403
+    from db import Database
+    db          = Database()
+    license_key = (request.get_json() or {}).get("license_key", "")
+    if action == "approve":
+        ok = db.approve(license_key)
+    else:
+        ok = db.reject(license_key)
+    if not ok:
+        return jsonify({"detail": "Registration not found"}), 404
+    return jsonify({"status": action + "d", "license_key": license_key})
 
 
 if __name__ == "__main__":
