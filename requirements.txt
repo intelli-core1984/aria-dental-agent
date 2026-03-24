@@ -4,6 +4,7 @@ pystray>=0.19.5
 Pillow>=10.0.0
 pyautogui>=0.9.54
 pytesseract>=0.3.10
+pynput>=1.7.0
 python-dotenv>=1.0.0
 schedule>=1.2.0
 pyinstaller>=6.0.0
